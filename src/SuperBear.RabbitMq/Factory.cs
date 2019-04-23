@@ -7,12 +7,9 @@ namespace SuperBear.RabbitMq
     public class Factory
     {
         private readonly RabbitOption _rabbitOption;
-        public ILogger Logger;
-        public Factory(IOptions<RabbitOption> rabbitOption, ILoggerFactory loggerFactory)
+        public Factory(IOptions<RabbitOption> rabbitOption)
         {
             _rabbitOption = rabbitOption.Value;
-            loggerFactory.AddConsole();
-            Logger = loggerFactory.CreateLogger("SuperBear.RabbitMq");
         }
         private ConnectionFactory _instance;
         public ConnectionFactory Instance

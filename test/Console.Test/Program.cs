@@ -13,15 +13,12 @@ namespace Console.Test
     class Program
     {
         public static IConfigurationRoot Configuration { get; set; }
-        private static IServiceProvider ServiceProvider { get; set; }
-        public static ILogger _Logger;
         static void Main(string[] args)
         {
             InitConfigurationManager();
             var serviceProvider = InitDependencyInjection();
             var factory = (Factory)serviceProvider.GetService(typeof(Factory));
-            var channel = factory.CreateChannel();
-
+            var channel = factory.CurrentConnection.CreateChannel();
             channel.SetPrefetch(1);
             channel.DefineExchange(new Exchange()
             {
