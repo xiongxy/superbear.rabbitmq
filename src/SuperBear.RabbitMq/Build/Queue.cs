@@ -35,10 +35,18 @@ namespace SuperBear.RabbitMq.Build
         /// 是否开启死信,默认Flase
         /// </summary>
         public bool DeadLetter { get; set; } = false;
+        /// <summary>
+        /// 是否开启优先级,默认False
+        /// </summary>
+        public bool Priority { get; set; } = false;
         private DeadLetter DeadLetterConfig { get; set; }
         public void QueueDeclare(Channel channel)
         {
             IDictionary<string, object> argumentDictionary = new Dictionary<string, object>();
+            if (Priority)
+            {
+                argumentDictionary.Add("x-max-priority", 10);
+            }
             if (Retry)
             {
                 SetRetry(channel, argumentDictionary);
