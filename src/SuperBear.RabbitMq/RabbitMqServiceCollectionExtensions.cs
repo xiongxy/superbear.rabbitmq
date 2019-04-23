@@ -15,6 +15,7 @@ namespace SuperBear.RabbitMq
                 throw new ArgumentNullException(nameof(option));
             services.AddOptions();
             services.Configure(option);
+            services.AddLogging();
             services.AddSingleton<Factory>();
             return services;
         }

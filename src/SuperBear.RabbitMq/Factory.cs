@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Options;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 
 namespace SuperBear.RabbitMq
@@ -6,9 +7,12 @@ namespace SuperBear.RabbitMq
     public class Factory
     {
         private readonly RabbitOption _rabbitOption;
-        public Factory(IOptions<RabbitOption> rabbitOption)
+        public ILogger Logger;
+        public Factory(IOptions<RabbitOption> rabbitOption, ILoggerFactory loggerFactory)
         {
             _rabbitOption = rabbitOption.Value;
+            loggerFactory.AddConsole();
+            Logger = loggerFactory.CreateLogger("SuperBear.RabbitMq");
         }
         private ConnectionFactory _instance;
         public ConnectionFactory Instance
@@ -34,7 +38,6 @@ namespace SuperBear.RabbitMq
                 return _instance;
             }
         }
-
         private IConnection _currentConnection;
         public IConnection CurrentConnection
         {

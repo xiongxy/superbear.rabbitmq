@@ -1,6 +1,7 @@
 ﻿using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using SuperBear.RabbitMq;
 using SuperBear.RabbitMq.Build;
@@ -13,13 +14,13 @@ namespace Console.Test
     {
         public static IConfigurationRoot Configuration { get; set; }
         private static IServiceProvider ServiceProvider { get; set; }
+        public static ILogger _Logger;
         static void Main(string[] args)
         {
             InitConfigurationManager();
             var serviceProvider = InitDependencyInjection();
             var factory = (Factory)serviceProvider.GetService(typeof(Factory));
-
-            var channel = factory.CurrentConnection.CreateChannel();
+            var channel = factory.CreateChannel();
 
             channel.SetPrefetch(1);
             channel.DefineExchange(new Exchange()
@@ -36,14 +37,14 @@ namespace Console.Test
 
             var basicProperties = channel.CretaeBasicProperties(new BasicProperties());
 
-            for (int i = 0; i < 10000; i++)
+            for (int i = 0; i < 1; i++)
             {
                 channel.Publish(basicProperties, $"asd{i}");
             }
 
             channel.Receive<string>((item, ea) =>
             {
-                //channel.Publish(basicProperties, "asd");
+                throw new Exception("asd");
             });
 
             System.Console.ReadLine();

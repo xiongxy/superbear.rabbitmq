@@ -2,13 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using SuperBear.RabbitMq.Build;
 using ExchangeType = RabbitMQ.Client.ExchangeType;
 using PublicationAddress = RabbitMQ.Client.PublicationAddress;
+using Queue = SuperBear.RabbitMq.Build.Queue;
 
 namespace SuperBear.RabbitMq.Extensions
 {
@@ -80,7 +81,7 @@ namespace SuperBear.RabbitMq.Extensions
             }
             return properties;
         }
-        public static void Publish<T>(this Channel channel, IBasicProperties properties, T body, RabbitMQ.Client.PublicationAddress address = null) where T : class
+        public static void Publish<T>(this Channel channel, IBasicProperties properties, T body, PublicationAddress address = null) where T : class
         {
             if (address == null)
             {
@@ -92,7 +93,7 @@ namespace SuperBear.RabbitMq.Extensions
             var message = Encoding.UTF8.GetBytes(jsonb);
             channel.CurrentChannel.BasicPublish(address, properties, message);
         }
-        public static void Publish(this Channel channel, IBasicProperties properties, byte[] body, RabbitMQ.Client.PublicationAddress address = null)
+        public static void Publish(this Channel channel, IBasicProperties properties, byte[] body, PublicationAddress address = null)
         {
             if (address == null)
             {
@@ -130,7 +131,7 @@ namespace SuperBear.RabbitMq.Extensions
                     received(message, ea);
                     currentChannel.BasicAck(ea.DeliveryTag, false);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     currentChannel.BasicNack(ea.DeliveryTag, false, true);
                 }
@@ -152,7 +153,6 @@ namespace SuperBear.RabbitMq.Extensions
                     string body = Encoding.UTF8.GetString(ea.Body);
                     var message = JsonConvert.DeserializeObject<T>(body);
                     received(message, ea);
-                    throw new Exception();
                 }
                 catch (Exception)
                 {
@@ -162,7 +162,8 @@ namespace SuperBear.RabbitMq.Extensions
                     {
                         IDictionary<String, Object> headers = new Dictionary<String, Object>();
                         headers.Add("x-orig-routing-key", GetOrigRoutingKey(properties, ea.RoutingKey));
-                        //channel.basicPublish(failedExchangeName(), queueName, createOverrideProperties(properties, headers), body);
+                        var address = new PublicationAddress(ExchangeType.Direct, channel.Exchange.DeadLetterName, channel.RoutingKey);
+                        channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
                     }
                     else
                     {
@@ -170,8 +171,12 @@ namespace SuperBear.RabbitMq.Extensions
                         if (headers == null)
                         {
                             headers = new Dictionary<String, Object>();
+                            headers.Add("x-orig-routing-key", GetOrigRoutingKey(properties, ea.RoutingKey));
                         }
-                        headers.Add("x-orig-routing-key", GetOrigRoutingKey(properties, ea.RoutingKey));
+                        else
+                        {
+                            headers["x-orig-routing-key"] = GetOrigRoutingKey(properties, ea.RoutingKey);
+                        }
                         var address = new PublicationAddress(ExchangeType.Direct, channel.Exchange.RetryName, channel.RoutingKey);
                         channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
                     }
@@ -196,7 +201,7 @@ namespace SuperBear.RabbitMq.Extensions
                     received(message, ea);
                     currentChannel.BasicAck(ea.DeliveryTag, false);
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     currentChannel.BasicNack(ea.DeliveryTag, false, false);
                 }
@@ -209,24 +214,29 @@ namespace SuperBear.RabbitMq.Extensions
         }
         private static long GetRetryCount(IBasicProperties properties)
         {
-            long retryCount = 0L;
+            var retryCount = 0L;
             try
             {
-                Dictionary<string, object> headers = (Dictionary<string, object>)properties.Headers;
+                IDictionary<string, object> headers = properties.Headers;
                 if (headers != null)
                 {
                     if (headers.ContainsKey("x-death"))
                     {
-                        List<Dictionary<String, Object>> deaths = (List<Dictionary<String, Object>>)headers["x-death"];
-                        if (deaths.Count() > 0)
+                        var xdeath = headers["x-death"];
+                        var xdeathA = (IList<object>)xdeath;
+                        if (xdeathA.Any())
                         {
-                            //Map<String, Object> death = deaths.get(0);
-                            //retryCount = (Long)death.get("count");
+                            var xdeathB = xdeathA.FirstOrDefault();
+                            var xdeathC = (IDictionary<string, object>)xdeathB;
+                            if (xdeathC != null) retryCount = (long)xdeathC["count"];
                         }
                     }
                 }
             }
-            catch (Exception e) { }
+            catch (Exception)
+            {
+                // ignored
+            }
             return retryCount;
         }
         private static string GetOrigRoutingKey(IBasicProperties properties, string defaultValue)
@@ -239,7 +249,8 @@ namespace SuperBear.RabbitMq.Extensions
                 {
                     if (headers.ContainsKey("x-orig-routing-key"))
                     {
-                        routingKey = headers["x-orig-routing-key"].ToString();
+                        var routingKeyByte = (byte[])headers["x-orig-routing-key"];
+                        routingKey = Encoding.UTF8.GetString(routingKeyByte);
                     }
                 }
             }
@@ -251,8 +262,6 @@ namespace SuperBear.RabbitMq.Extensions
         }
         private static IBasicProperties CreateOverrideProperties(IBasicProperties properties, IDictionary<String, Object> headers)
         {
-            //var json = JsonConvert.SerializeObject(properties);
-            //var newBasicProperties = JsonConvert.DeserializeObject<IBasicProperties>(json);
             properties.Headers = headers;
             return properties;
         }
