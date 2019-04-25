@@ -16,7 +16,7 @@ namespace SuperBear.RabbitMq.Build
         /// <summary>
         /// 交换器类型
         /// </summary>
-        public ExchangeTypeEnum Type { get; set; }
+        public ExchangeTypeEnum Type { get; set; } = ExchangeTypeEnum.Direct;
         /// <summary>
         /// 是否自动删除,默认Flase
         /// </summary>
@@ -25,10 +25,15 @@ namespace SuperBear.RabbitMq.Build
         /// 是否打开持久化,默认True
         /// </summary>
         public bool Durable { get; set; } = true;
-        public void ExchangeDeclare(Channel channel)
+        public Exchange()
         {
-            channel.CurrentChannel.ExchangeDeclare(Name, Type.ToString().ToLower(), durable: Durable, autoDelete: AutoDelete);
+            Name = Guid.NewGuid().ToString("N");
         }
+        public Exchange(string name)
+        {
+            Name = name;
+        }
+
     }
 
     public enum ExchangeTypeEnum
