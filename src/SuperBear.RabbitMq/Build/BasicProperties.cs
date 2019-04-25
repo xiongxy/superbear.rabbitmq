@@ -18,5 +18,7 @@ namespace SuperBear.RabbitMq.Build
         /// 是否开启时间戳,默认False
         /// </summary>
         public bool GenerateTimestamp { get; set; } = false;
+
+        public byte Priority { get; set; } = 0;
     }
 }

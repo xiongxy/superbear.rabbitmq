@@ -17,6 +17,7 @@ namespace SuperBear.RabbitMq
             services.Configure(option);
             services.AddLogging();
             services.AddSingleton<Factory>();
+            services.AddSingleton<RabbitManageServer>();
             return services;
         }
     }

@@ -10,15 +10,6 @@ namespace SuperBear.RabbitMq.Extensions
     // ReSharper disable once InconsistentNaming
     public static class IConnectionExensions
     {
-        public static Channel CreateChannel(this IConnection connection, ILogger logger)
-        {
-            return new Channel()
-            {
-                CurrentChannel = connection.CreateModel(),
-                Logger = logger
-            };
-        }
-
         public static Channel CreateChannel(this IConnection connection)
         {
             return new Channel()

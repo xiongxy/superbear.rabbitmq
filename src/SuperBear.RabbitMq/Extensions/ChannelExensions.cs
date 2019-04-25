@@ -71,6 +71,10 @@ namespace SuperBear.RabbitMq.Extensions
         {
             var properties = channel.CurrentChannel.CreateBasicProperties();
             properties.Persistent = basicProperties.Persistent;
+            if (basicProperties.Priority != 0)
+            {
+                properties.Priority = basicProperties.Priority;
+            }
             if (basicProperties.GenerateMessageId)
             {
                 properties.MessageId = Guid.NewGuid().ToString("N");
