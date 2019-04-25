@@ -67,7 +67,7 @@ namespace SuperBear.RabbitMq.Extensions
             channel.Queue.QueueDeclare(channel);
             channel.CurrentChannel.QueueBind(channel.Queue.Name, channel.Exchange.Name, channel.RoutingKey, null);
         }
-        public static IBasicProperties CretaeBasicProperties(this Channel channel, BasicProperties basicProperties)
+        public static IBasicProperties CreateBasicProperties(this Channel channel, BasicProperties basicProperties)
         {
             var properties = channel.CurrentChannel.CreateBasicProperties();
             properties.Persistent = basicProperties.Persistent;
@@ -109,6 +109,7 @@ namespace SuperBear.RabbitMq.Extensions
         }
         public static void Receive<T>(this Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName = "default")
         {
+            queName = queName == "default" ? channel.Queue.Name : queName;
             if (channel.Queue.Retry)
             {
                 ReceiveRetryMode<T>(channel, received, queName);
@@ -122,7 +123,7 @@ namespace SuperBear.RabbitMq.Extensions
                 ReceiveNormal<T>(channel, received, queName);
             }
         }
-        private static void ReceiveNormal<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName = "default")
+        private static void ReceiveNormal<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
@@ -140,13 +141,9 @@ namespace SuperBear.RabbitMq.Extensions
                     currentChannel.BasicNack(ea.DeliveryTag, false, true);
                 }
             };
-            if (queName == "default")
-            {
-                queName = channel.Queue.Name;
-            }
             currentChannel.BasicConsume(queName, false, consumer);
         }
-        private static void ReceiveRetryMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName = "default")
+        private static void ReceiveRetryMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
@@ -186,13 +183,9 @@ namespace SuperBear.RabbitMq.Extensions
                     }
                 }
             };
-            if (queName == "default")
-            {
-                queName = channel.Queue.Name;
-            }
             currentChannel.BasicConsume(queName, true, consumer);
         }
-        private static void ReceiveDeadLetterMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName = "default")
+        private static void ReceiveDeadLetterMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
@@ -210,10 +203,6 @@ namespace SuperBear.RabbitMq.Extensions
                     currentChannel.BasicNack(ea.DeliveryTag, false, false);
                 }
             };
-            if (queName == "default")
-            {
-                queName = channel.Queue.Name;
-            }
             currentChannel.BasicConsume(queName, false, consumer);
         }
         private static long GetRetryCount(IBasicProperties properties)
@@ -264,7 +253,7 @@ namespace SuperBear.RabbitMq.Extensions
             }
             return routingKey;
         }
-        private static IBasicProperties CreateOverrideProperties(IBasicProperties properties, IDictionary<String, Object> headers)
+        private static IBasicProperties CreateOverrideProperties(IBasicProperties properties, IDictionary<string, object> headers)
         {
             properties.Headers = headers;
             return properties;

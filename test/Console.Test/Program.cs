@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,35 +17,46 @@ namespace Console.Test
         public static IConfigurationRoot Configuration { get; set; }
         static void Main(string[] args)
         {
+
+
+
+
+
+
+
+
             InitConfigurationManager();
             var serviceProvider = InitDependencyInjection();
             var factory = (Factory)serviceProvider.GetService(typeof(Factory));
             var rabbitManageServer = (RabbitManageServer)serviceProvider.GetService(typeof(RabbitManageServer));
-            var vvv = rabbitManageServer.GetQueues("^OMEGA.*", true).GetAwaiter().GetResult();
-            //channel.SetPrefetch(1);
-            //channel.DefineExchange(new Exchange()
-            //{
-            //    Name = "Exchange",
-            //    Type = ExchangeTypeEnum.Direct
-            //})
-            //.DefineQueue(new Queue()
-            //{
-            //    Name = "Queue",
-            //    Retry = true
-            //})
-            //.Bind("routingKey").Commit();
+            var vvv = rabbitManageServer.GetQueues("", false).GetAwaiter().GetResult();
+            var channel = factory.CurrentConnection.CreateChannel();
 
-            //var basicProperties = channel.CretaeBasicProperties(new BasicProperties());
+            channel.SetPrefetch(1);
+            channel.DefineExchange(new Exchange()
+            {
+                Name = "Exchange",
+                Type = ExchangeTypeEnum.Direct
+            })
+            .DefineQueue(new Queue()
+            {
+                Name = "Queue",
+                Retry = true
+            })
+            .Bind("routingKey").Commit();
 
-            //for (int i = 0; i < 1; i++)
-            //{
-            //    channel.Publish(basicProperties, $"asd{i}");
-            //}
+            var basicProperties = channel.CretaeBasicProperties(new BasicProperties());
 
-            //channel.Receive<string>((item, ea) =>
-            //{
-            //    throw new Exception("asd");
-            //});
+            for (int i = 0; i < 1; i++)
+            {
+                channel.Publish(basicProperties, $"asd{i}");
+            }
+
+            channel.Receive<string>((item, ea) =>
+            {
+                throw new Exception("asd");
+            });
+
 
             System.Console.ReadLine();
         }
@@ -58,7 +70,7 @@ namespace Console.Test
                 option.HostName = Configuration["Omega:RabbitOption:HostName"];
                 option.EnvironmentName = Configuration["Omega:RabbitOption:EnvironmentName"];
                 option.AdditionalConfig = new RabbitMqAdditionalConfig() { AutomaticRecoveryEnabled = true };
-                option.ManagePort = "35672";
+                option.ManagePort = "15672";
             });
             services.AddSingleton(Configuration);
             IServiceProvider serviceProvider = services.BuildServiceProvider();

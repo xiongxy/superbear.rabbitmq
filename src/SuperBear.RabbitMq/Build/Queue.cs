@@ -40,6 +40,12 @@ namespace SuperBear.RabbitMq.Build
         /// </summary>
         public bool Priority { get; set; } = false;
         private DeadLetter DeadLetterConfig { get; set; }
+
+        public Queue(string name)
+        {
+            Name = name;
+        }
+
         public void QueueDeclare(Channel channel)
         {
             IDictionary<string, object> argumentDictionary = new Dictionary<string, object>();

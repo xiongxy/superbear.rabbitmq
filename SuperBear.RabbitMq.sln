@@ -7,9 +7,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{1DB44A7D-3A1
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{336C698D-0BC5-4C46-B8EA-9AF1BCFA6822}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBear.RabbitMq", "src\SuperBear.RabbitMq\SuperBear.RabbitMq.csproj", "{D958BB5F-CB41-4136-AFAC-B95F79DB75BD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SuperBear.RabbitMq", "src\SuperBear.RabbitMq\SuperBear.RabbitMq.csproj", "{D958BB5F-CB41-4136-AFAC-B95F79DB75BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Console.Test", "test\Console.Test\Console.Test.csproj", "{576D9890-DE5E-4F86-A601-994798EE601E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Console.Test", "test\Console.Test\Console.Test.csproj", "{576D9890-DE5E-4F86-A601-994798EE601E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SuperBear.RabbitMq.Test", "test\SuperBear.RabbitMq.Test\SuperBear.RabbitMq.Test.csproj", "{D2FEA392-F215-4145-A98F-4F8095E1BD55}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -25,6 +27,10 @@ Global
 		{576D9890-DE5E-4F86-A601-994798EE601E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{576D9890-DE5E-4F86-A601-994798EE601E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{576D9890-DE5E-4F86-A601-994798EE601E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2FEA392-F215-4145-A98F-4F8095E1BD55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2FEA392-F215-4145-A98F-4F8095E1BD55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2FEA392-F215-4145-A98F-4F8095E1BD55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2FEA392-F215-4145-A98F-4F8095E1BD55}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -32,6 +38,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{D958BB5F-CB41-4136-AFAC-B95F79DB75BD} = {1DB44A7D-3A1F-46D3-A8CD-433801FF75E4}
 		{576D9890-DE5E-4F86-A601-994798EE601E} = {336C698D-0BC5-4C46-B8EA-9AF1BCFA6822}
+		{D2FEA392-F215-4145-A98F-4F8095E1BD55} = {336C698D-0BC5-4C46-B8EA-9AF1BCFA6822}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {52281F8E-20C2-4085-9473-250EF5AADFAD}
