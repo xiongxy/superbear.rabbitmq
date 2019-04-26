@@ -25,14 +25,15 @@ namespace SuperBear.RabbitMq.Build
         /// 是否打开持久化,默认True
         /// </summary>
         public bool Durable { get; set; } = true;
+        public Exchange()
+        {
+            Name = Guid.NewGuid().ToString("N");
+        }
         public Exchange(string name)
         {
             Name = name;
         }
-        public void ExchangeDeclare(Channel channel)
-        {
-            channel.CurrentChannel.ExchangeDeclare(Name, Type.ToString().ToLower(), durable: Durable, autoDelete: AutoDelete);
-        }
+
     }
 
     public enum ExchangeTypeEnum

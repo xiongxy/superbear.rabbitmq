@@ -7,10 +7,6 @@ namespace SuperBear.RabbitMq
     public class Factory
     {
         private readonly RabbitOption _rabbitOption;
-        public Factory(IOptions<RabbitOption> rabbitOption)
-        {
-            _rabbitOption = rabbitOption.Value;
-        }
         private ConnectionFactory _instance;
         public ConnectionFactory Instance
         {
@@ -46,6 +42,10 @@ namespace SuperBear.RabbitMq
                 }
                 return _currentConnection;
             }
+        }
+        public Factory(IOptions<RabbitOption> rabbitOption)
+        {
+            _rabbitOption = rabbitOption.Value;
         }
     }
 }

@@ -3,6 +3,7 @@ using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using RabbitMQ.Client;
 using SuperBear.RabbitMq;
 using SuperBear.RabbitMq.Build;
@@ -17,47 +18,41 @@ namespace Console.Test
         public static IConfigurationRoot Configuration { get; set; }
         static void Main(string[] args)
         {
-
-
-
-
-
-
-
-
             InitConfigurationManager();
             var serviceProvider = InitDependencyInjection();
             var factory = (Factory)serviceProvider.GetService(typeof(Factory));
-            var rabbitManageServer = (RabbitManageServer)serviceProvider.GetService(typeof(RabbitManageServer));
-            var vvv = rabbitManageServer.GetQueues("", false).GetAwaiter().GetResult();
             var channel = factory.CurrentConnection.CreateChannel();
 
             channel.SetPrefetch(1);
-            channel.DefineExchange(new Exchange()
-            {
-                Name = "Exchange",
-                Type = ExchangeTypeEnum.Direct
-            })
-            .DefineQueue(new Queue()
-            {
-                Name = "Queue",
-                Retry = true
-            })
-            .Bind("routingKey").Commit();
 
-            var basicProperties = channel.CretaeBasicProperties(new BasicProperties());
-
-            for (int i = 0; i < 1; i++)
+            new MessageStructure()
             {
-                channel.Publish(basicProperties, $"asd{i}");
-            }
+                Exchange = new Exchange()
+                {
+                    Name = "Exchange",
+                    Type = ExchangeTypeEnum.Direct
+                },
+                Queue = new Queue()
+                {
+                    Name = "Queue"
+                },
+                RoutingKey = "routingKey"
+            }.Commit(channel);
+
+            var basicProperties = channel.CreateBasicProperties(new BasicProperties()
+            {
+                Persistent = true 
+            });
+
+            //for (int i = 0; i < 1000000; i++)
+            //{
+            //    channel.Publish(basicProperties, $"asd{i}", new PublicationAddress(ExchangeTypeEnum.Direct.ToString().ToLower(), "Exchange", "routingKey"));
+            //}
 
             channel.Receive<string>((item, ea) =>
             {
-                throw new Exception("asd");
-            });
-
-
+                //Consolea.WriteLine(JsonConvert.SerializeObject(item));
+            }, "Queue");
             System.Console.ReadLine();
         }
         public static IServiceProvider InitDependencyInjection()

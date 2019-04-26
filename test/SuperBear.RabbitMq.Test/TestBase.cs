@@ -15,10 +15,10 @@ namespace SuperBear.RabbitMq.Test
             {
                 option.UserName = "guest";
                 option.Password = "guest";
-                option.HostName = "192.168.0.103";
+                option.HostName = "192.168.200.138";
                 option.EnvironmentName = "DEBUG";
                 option.AdditionalConfig = new RabbitMqAdditionalConfig() { AutomaticRecoveryEnabled = true };
-                option.ManagePort = "15672";
+                option.ManagePort = "35672";
             });
             IServiceProvider serviceProvider = services.BuildServiceProvider();
             return serviceProvider;

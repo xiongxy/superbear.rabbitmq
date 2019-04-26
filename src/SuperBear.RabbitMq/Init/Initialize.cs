@@ -1,13 +1,29 @@
 ﻿using System;
+using RabbitMQ.Client;
 using SuperBear.RabbitMq.Build;
 
 namespace SuperBear.RabbitMq.Init
 {
-    public class Initialize
+    public sealed class Initialize
     {
-        public static void Init(Action<Initializer> config, Factory factory)
+        private Initialize()
         {
-            config(new Initializer(factory));
+
+        }
+        public static void Init(Action<Initialize> config)
+        {
+            config(new Initialize());
+        }
+        public void InitMessageStructure(MessageStructure messageStructure)
+        {
+            MemoryMap.MessageStructures.Add(messageStructure);
+        }
+        internal static void Init(Channel channel)
+        {
+            foreach (var messageStructure in MemoryMap.MessageStructures)
+            {
+                messageStructure.Commit(channel);
+            }
         }
     }
 }

@@ -24,49 +24,49 @@ namespace SuperBear.RabbitMq.Extensions
         {
             channel.CurrentChannel.BasicQos(0, count, false);
         }
-        /// <summary>
-        /// 定义交换器
-        /// </summary>
-        /// <param name="channel"></param>
-        /// <param name="exchange"></param>
-        /// <returns></returns>
-        public static Channel DefineExchange(this Channel channel, Exchange exchange)
-        {
-            channel.Exchange = exchange;
-            return channel;
-        }
-        /// <summary>
-        /// 定义队列
-        /// </summary>
-        /// <param name="channel"></param>
-        /// <param name="queue"></param>
-        /// <returns></returns>
-        public static Channel DefineQueue(this Channel channel, Queue queue)
-        {
-            channel.Queue = queue;
-            return channel;
-        }
-        /// <summary>
-        /// 绑定
-        /// </summary>
-        /// <param name="channel"></param>
-        /// <param name="routingKey"></param>
-        /// <returns></returns>
-        public static Channel Bind(this Channel channel, string routingKey)
-        {
-            channel.RoutingKey = routingKey;
-            return channel;
-        }
-        /// <summary>
-        /// 提交
-        /// </summary>
-        /// <param name="channel"></param>
-        public static void Commit(this Channel channel)
-        {
-            channel.Exchange.ExchangeDeclare(channel);
-            channel.Queue.QueueDeclare(channel);
-            channel.CurrentChannel.QueueBind(channel.Queue.Name, channel.Exchange.Name, channel.RoutingKey, null);
-        }
+        ///// <summary>
+        ///// 定义交换器
+        ///// </summary>
+        ///// <param name="channel"></param>
+        ///// <param name="exchange"></param>
+        ///// <returns></returns>
+        //public static Channel DefineExchange(this Channel channel, Exchange exchange)
+        //{
+        //    channel.Exchange = exchange;
+        //    return channel;
+        //}
+        ///// <summary>
+        ///// 定义队列
+        ///// </summary>
+        ///// <param name="channel"></param>
+        ///// <param name="queue"></param>
+        ///// <returns></returns>
+        //public static Channel DefineQueue(this Channel channel, Queue queue)
+        //{
+        //    channel.Queue = queue;
+        //    return channel;
+        //}
+        ///// <summary>
+        ///// 绑定
+        ///// </summary>
+        ///// <param name="channel"></param>
+        ///// <param name="routingKey"></param>
+        ///// <returns></returns>
+        //public static Channel Bind(this Channel channel, string routingKey)
+        //{
+        //    channel.RoutingKey = routingKey;
+        //    return channel;
+        //}
+        ///// <summary>
+        ///// 提交
+        ///// </summary>
+        ///// <param name="channel"></param>
+        //public static void Commit(this Channel channel)
+        //{
+        //    channel.Exchange.ExchangeDeclare(channel);
+        //    channel.Queue.QueueDeclare(channel);
+        //    channel.CurrentChannel.QueueBind(channel.Queue.Name, channel.Exchange.Name, channel.RoutingKey, null);
+        //}
         public static IBasicProperties CreateBasicProperties(this Channel channel, BasicProperties basicProperties)
         {
             var properties = channel.CurrentChannel.CreateBasicProperties();
@@ -85,45 +85,60 @@ namespace SuperBear.RabbitMq.Extensions
             }
             return properties;
         }
-        public static void Publish<T>(this Channel channel, IBasicProperties properties, T body, PublicationAddress address = null) where T : class
+        /// <summary>
+        /// 发布消息
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="properties"></param>
+        /// <param name="body"></param>
+        /// <param name="address"></param>
+        public static void Publish(this Channel channel, IBasicProperties properties, byte[] body, PublicationAddress address)
         {
-            if (address == null)
-            {
-                var exchange = channel.Exchange;
-                address =
-                    new PublicationAddress(exchange.Type.ToString().ToLower(), exchange.Name, channel.RoutingKey);
-            }
+            channel.CurrentChannel.BasicPublish(address, properties, body);
+        }
+        /// <summary>
+        /// 发布消息
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="channel"></param>
+        /// <param name="properties"></param>
+        /// <param name="body"></param>
+        /// <param name="address"></param>
+        public static void Publish<T>(this Channel channel, IBasicProperties properties, T body, PublicationAddress address) where T : class
+        {
             var jsonb = JsonConvert.SerializeObject(body);
             var message = Encoding.UTF8.GetBytes(jsonb);
             channel.CurrentChannel.BasicPublish(address, properties, message);
         }
-        public static void Publish(this Channel channel, IBasicProperties properties, byte[] body, PublicationAddress address = null)
+        /// <summary>
+        /// 接收消息
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="channel"></param>
+        /// <param name="received"></param>
+        /// <param name="queueName"></param>
+        public static void Receive<T>(this Channel channel, EventHandler<BasicDeliverEventArgs> received, string queueName)
         {
-            if (address == null)
+            var messageStructure = MemoryMap.GetMessageStructure(queueName: queueName);
+            if (messageStructure == null)
             {
-                var exchange = channel.Exchange;
-                address =
-                    new PublicationAddress(exchange.Type.ToString().ToLower(), exchange.Name, channel.RoutingKey);
+                throw new Exception("队列不在映射中!");
             }
-            channel.CurrentChannel.BasicPublish(address, properties, body);
-        }
-        public static void Receive<T>(this Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName = "default")
-        {
-            queName = queName == "default" ? channel.Queue.Name : queName;
-            if (channel.Queue.Retry)
+            var queue = messageStructure.Queue;
+            if (queue.Retry)
             {
-                ReceiveRetryMode<T>(channel, received, queName);
+                ReceiveRetryMode<T>(channel, received, messageStructure);
             }
-            else if (channel.Queue.DeadLetter)
+            else if (queue.DeadLetter)
             {
-                ReceiveDeadLetterMode<T>(channel, received, queName);
+                ReceiveDeadLetterMode<T>(channel, received, messageStructure);
             }
             else
             {
-                ReceiveNormal<T>(channel, received, queName);
+                ReceiveNormal<T>(channel, received, messageStructure);
             }
         }
-        private static void ReceiveNormal<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName)
+        private static void ReceiveNormal<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, MessageStructure messageStructure)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
@@ -141,9 +156,9 @@ namespace SuperBear.RabbitMq.Extensions
                     currentChannel.BasicNack(ea.DeliveryTag, false, true);
                 }
             };
-            currentChannel.BasicConsume(queName, false, consumer);
+            currentChannel.BasicConsume(messageStructure.Queue.Name, false, consumer);
         }
-        private static void ReceiveRetryMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName)
+        private static void ReceiveRetryMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, MessageStructure messageStructure)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
@@ -163,7 +178,7 @@ namespace SuperBear.RabbitMq.Extensions
                     {
                         IDictionary<String, Object> headers = new Dictionary<String, Object>();
                         headers.Add("x-orig-routing-key", GetOrigRoutingKey(properties, ea.RoutingKey));
-                        var address = new PublicationAddress(ExchangeType.Direct, channel.Exchange.DeadLetterName, channel.RoutingKey);
+                        var address = new PublicationAddress(ExchangeType.Direct, messageStructure.Exchange.DeadLetterName, messageStructure.RoutingKey);
                         channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
                     }
                     else
@@ -178,14 +193,14 @@ namespace SuperBear.RabbitMq.Extensions
                         {
                             headers["x-orig-routing-key"] = GetOrigRoutingKey(properties, ea.RoutingKey);
                         }
-                        var address = new PublicationAddress(ExchangeType.Direct, channel.Exchange.RetryName, channel.RoutingKey);
+                        var address = new PublicationAddress(ExchangeType.Direct, messageStructure.Exchange.RetryName, messageStructure.RoutingKey);
                         channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
                     }
                 }
             };
-            currentChannel.BasicConsume(queName, true, consumer);
+            currentChannel.BasicConsume(messageStructure.Queue.Name, true, consumer);
         }
-        private static void ReceiveDeadLetterMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, string queName)
+        private static void ReceiveDeadLetterMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, MessageStructure messageStructure)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
@@ -203,7 +218,7 @@ namespace SuperBear.RabbitMq.Extensions
                     currentChannel.BasicNack(ea.DeliveryTag, false, false);
                 }
             };
-            currentChannel.BasicConsume(queName, false, consumer);
+            currentChannel.BasicConsume(messageStructure.Queue.Name, false, consumer);
         }
         private static long GetRetryCount(IBasicProperties properties)
         {

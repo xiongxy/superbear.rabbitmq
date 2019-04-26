@@ -18,13 +18,18 @@ namespace SuperBear.RabbitMq.Test
         [Fact]
         public void Test_Init_Queue()
         {
-            var factory = (Factory)ServiceProvider.GetService(typeof(Factory));
             Initialize.Init(config =>
             {
-                config.InitExchange(new Exchange("asdasdasd"));
-                config.InitQueue(new Queue("abcde"));
-                config.InitBind(new Exchange("asdasdasd"), new Queue("abcde"), "asdasd");
-            }, factory);
+                MessageStructure messageStructure = new MessageStructure
+                {
+                    Exchange = new Exchange(),
+                    Queue = new Queue(),
+                    RoutingKey = Guid.NewGuid().ToString("N")
+                };
+                config.InitMessageStructure(messageStructure);
+            });
+            var factory = (Factory)ServiceProvider.GetService(typeof(Factory));
+            factory.CurrentConnection.CreateChannel();
         }
     }
 }

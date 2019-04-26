@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using RabbitMQ.Client;
 using SuperBear.RabbitMq.Build;
+using SuperBear.RabbitMq.Init;
 
 namespace SuperBear.RabbitMq.Extensions
 {
@@ -12,11 +13,13 @@ namespace SuperBear.RabbitMq.Extensions
     {
         public static Channel CreateChannel(this IConnection connection)
         {
-            return new Channel()
+            var channel = new Channel()
             {
                 CurrentChannel = connection.CreateModel(),
                 Logger = new LoggerFactory().CreateLogger("SuperBear.RabbitMq")
             };
+            Initialize.Init(channel);
+            return channel;
         }
     }
 }
