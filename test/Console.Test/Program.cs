@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Framing;
 using SuperBear.RabbitMq;
 using SuperBear.RabbitMq.Build;
 using SuperBear.RabbitMq.Extensions;
@@ -20,40 +22,43 @@ namespace Console.Test
         {
             InitConfigurationManager();
             var serviceProvider = InitDependencyInjection();
+            InitRabbitMq();
             var factory = (Factory)serviceProvider.GetService(typeof(Factory));
             var channel = factory.CurrentConnection.CreateChannel();
 
-            channel.SetPrefetch(1);
+            var basicProperties = channel.CreateBasicProperties(new SuperBear.RabbitMq.Build.BasicProperties() { Persistent = true });
+            channel.Publish(basicProperties, "asd", new PublicationAddress(ExchangeType.Direct, "Exchange", "RoutingKey"));
 
-            new MessageStructure()
+            channel.Receive<List<string>>((message, ea) =>
             {
-                Exchange = new Exchange()
-                {
-                    Name = "Exchange",
-                    Type = ExchangeTypeEnum.Direct
-                },
-                Queue = new Queue()
-                {
-                    Name = "Queue"
-                },
-                RoutingKey = "routingKey"
-            }.Commit(channel);
-
-            var basicProperties = channel.CreateBasicProperties(new BasicProperties()
-            {
-                Persistent = true 
-            });
-
-            //for (int i = 0; i < 1000000; i++)
-            //{
-            //    channel.Publish(basicProperties, $"asd{i}", new PublicationAddress(ExchangeTypeEnum.Direct.ToString().ToLower(), "Exchange", "routingKey"));
-            //}
-
-            channel.Receive<string>((item, ea) =>
-            {
-                //Consolea.WriteLine(JsonConvert.SerializeObject(item));
+                channel.CurrentChannel.BasicAck(ea.DeliveryTag, false);
             }, "Queue");
-            System.Console.ReadLine();
+        }
+
+        public static void InitRabbitMq()
+        {
+            SuperBear.RabbitMq.Init.Initialize.Init(config =>
+            {
+                MessageStructure scheduler = new MessageStructure()
+                {
+                    Exchange = new Exchange()
+                    {
+                        Durable = true,
+                        AutoDelete = false,
+                        Name = $"Exchange",
+                        Type = ExchangeTypeEnum.Direct
+                    },
+                    Queue = new Queue()
+                    {
+                        Name = $"Queue",
+                        Durable = true,
+                        AutoDelete = false,
+                        Exclusive = false
+                    },
+                    RoutingKey = $"RoutingKey"
+                };
+                config.InitMessageStructure(scheduler);
+            });
         }
         public static IServiceProvider InitDependencyInjection()
         {

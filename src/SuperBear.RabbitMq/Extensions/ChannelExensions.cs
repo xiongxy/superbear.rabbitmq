@@ -24,49 +24,12 @@ namespace SuperBear.RabbitMq.Extensions
         {
             channel.CurrentChannel.BasicQos(0, count, false);
         }
-        ///// <summary>
-        ///// 定义交换器
-        ///// </summary>
-        ///// <param name="channel"></param>
-        ///// <param name="exchange"></param>
-        ///// <returns></returns>
-        //public static Channel DefineExchange(this Channel channel, Exchange exchange)
-        //{
-        //    channel.Exchange = exchange;
-        //    return channel;
-        //}
-        ///// <summary>
-        ///// 定义队列
-        ///// </summary>
-        ///// <param name="channel"></param>
-        ///// <param name="queue"></param>
-        ///// <returns></returns>
-        //public static Channel DefineQueue(this Channel channel, Queue queue)
-        //{
-        //    channel.Queue = queue;
-        //    return channel;
-        //}
-        ///// <summary>
-        ///// 绑定
-        ///// </summary>
-        ///// <param name="channel"></param>
-        ///// <param name="routingKey"></param>
-        ///// <returns></returns>
-        //public static Channel Bind(this Channel channel, string routingKey)
-        //{
-        //    channel.RoutingKey = routingKey;
-        //    return channel;
-        //}
-        ///// <summary>
-        ///// 提交
-        ///// </summary>
-        ///// <param name="channel"></param>
-        //public static void Commit(this Channel channel)
-        //{
-        //    channel.Exchange.ExchangeDeclare(channel);
-        //    channel.Queue.QueueDeclare(channel);
-        //    channel.CurrentChannel.QueueBind(channel.Queue.Name, channel.Exchange.Name, channel.RoutingKey, null);
-        //}
+        /// <summary>
+        /// 创建BasicProperties
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="basicProperties"></param>
+        /// <returns></returns>
         public static IBasicProperties CreateBasicProperties(this Channel channel, BasicProperties basicProperties)
         {
             var properties = channel.CurrentChannel.CreateBasicProperties();
@@ -117,7 +80,7 @@ namespace SuperBear.RabbitMq.Extensions
         /// <param name="channel"></param>
         /// <param name="received"></param>
         /// <param name="queueName"></param>
-        public static void Receive<T>(this Channel channel, EventHandler<BasicDeliverEventArgs> received, string queueName)
+        public static void Receive<T>(this Channel channel, Action<T, BasicDeliverEventArgs> received, string queueName)
         {
             var messageStructure = MemoryMap.GetMessageStructure(queueName: queueName);
             if (messageStructure == null)
@@ -138,83 +101,109 @@ namespace SuperBear.RabbitMq.Extensions
                 ReceiveNormal<T>(channel, received, messageStructure);
             }
         }
-        private static void ReceiveNormal<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, MessageStructure messageStructure)
+        private static void ReceiveNormal<T>(Channel channel, Action<T, BasicDeliverEventArgs> received, MessageStructure messageStructure)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
             consumer.Received += (ch, ea) =>
             {
-                string body = Encoding.UTF8.GetString(ea.Body);
-                var message = JsonConvert.DeserializeObject<T>(body);
+                var body = Encoding.UTF8.GetString(ea.Body);
                 try
                 {
-                    received(message, ea);
-                    currentChannel.BasicAck(ea.DeliveryTag, false);
+                    var message = JsonConvert.DeserializeObject<T>(body);
+                    try
+                    {
+                        received(message, ea);
+                    }
+                    catch (Exception e)
+                    {
+                        channel.Logger.LogError($"{messageStructure.Queue.Name} Queue 执行失败,原因:{{0}},消息体{{1}}", e, body);
+                        currentChannel.BasicNack(ea.DeliveryTag, false, true);
+                    }
                 }
                 catch (Exception)
                 {
+                    channel.Logger.LogError($"Json解析{typeof(T).Name}失败:{{0}}", body);
                     currentChannel.BasicNack(ea.DeliveryTag, false, true);
                 }
             };
             currentChannel.BasicConsume(messageStructure.Queue.Name, false, consumer);
         }
-        private static void ReceiveRetryMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, MessageStructure messageStructure)
+        private static void ReceiveRetryMode<T>(Channel channel, Action<T, BasicDeliverEventArgs> received, MessageStructure messageStructure)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
             consumer.Received += (ch, ea) =>
             {
+                var body = Encoding.UTF8.GetString(ea.Body);
                 try
                 {
-                    string body = Encoding.UTF8.GetString(ea.Body);
                     var message = JsonConvert.DeserializeObject<T>(body);
-                    received(message, ea);
-                }
-                catch (Exception)
-                {
-                    var properties = ea.BasicProperties;
-                    long retryCount = GetRetryCount(properties);
-                    if (retryCount > 3)
+                    try
                     {
-                        IDictionary<String, Object> headers = new Dictionary<String, Object>();
-                        headers.Add("x-orig-routing-key", GetOrigRoutingKey(properties, ea.RoutingKey));
-                        var address = new PublicationAddress(ExchangeType.Direct, messageStructure.Exchange.DeadLetterName, messageStructure.RoutingKey);
-                        channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
+                        received(message, ea);
                     }
-                    else
+                    catch (Exception e)
                     {
-                        IDictionary<String, Object> headers = properties.Headers;
-                        if (headers == null)
+                        var properties = ea.BasicProperties;
+                        long retryCount = GetRetryCount(properties);
+                        if (retryCount > 3)
                         {
-                            headers = new Dictionary<String, Object>();
+                            IDictionary<String, Object> headers = new Dictionary<String, Object>();
                             headers.Add("x-orig-routing-key", GetOrigRoutingKey(properties, ea.RoutingKey));
+                            var address = new PublicationAddress(ExchangeType.Direct, messageStructure.Exchange.DeadLetterName, messageStructure.RoutingKey);
+                            channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
                         }
                         else
                         {
-                            headers["x-orig-routing-key"] = GetOrigRoutingKey(properties, ea.RoutingKey);
+                            IDictionary<String, Object> headers = properties.Headers;
+                            if (headers == null)
+                            {
+                                headers = new Dictionary<String, Object>();
+                                headers.Add("x-orig-routing-key", GetOrigRoutingKey(properties, ea.RoutingKey));
+                            }
+                            else
+                            {
+                                headers["x-orig-routing-key"] = GetOrigRoutingKey(properties, ea.RoutingKey);
+                            }
+                            var address = new PublicationAddress(ExchangeType.Direct, messageStructure.Exchange.RetryName, messageStructure.RoutingKey);
+                            channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
                         }
-                        var address = new PublicationAddress(ExchangeType.Direct, messageStructure.Exchange.RetryName, messageStructure.RoutingKey);
-                        channel.Publish(CreateOverrideProperties(properties, headers), ea.Body, address);
                     }
+                }
+                catch (Exception)
+                {
+                    channel.Logger.LogError($"Json解析{typeof(T).Name}失败:{{0}}", body);
+                    var properties = ea.BasicProperties;
+                    var address = new PublicationAddress(ExchangeType.Direct, messageStructure.Exchange.DeadLetterName, messageStructure.RoutingKey);
+                    channel.Publish(properties, ea.Body, address);
                 }
             };
             currentChannel.BasicConsume(messageStructure.Queue.Name, true, consumer);
         }
-        private static void ReceiveDeadLetterMode<T>(Channel channel, EventHandler<BasicDeliverEventArgs> received, MessageStructure messageStructure)
+        private static void ReceiveDeadLetterMode<T>(Channel channel, Action<T, BasicDeliverEventArgs> received, MessageStructure messageStructure)
         {
             var currentChannel = channel.CurrentChannel;
             EventingBasicConsumer consumer = new EventingBasicConsumer(currentChannel);
             consumer.Received += (ch, ea) =>
             {
+                var body = Encoding.UTF8.GetString(ea.Body);
                 try
                 {
-                    string body = Encoding.UTF8.GetString(ea.Body);
                     var message = JsonConvert.DeserializeObject<T>(body);
-                    received(message, ea);
-                    currentChannel.BasicAck(ea.DeliveryTag, false);
+                    try
+                    {
+                        received(message, ea);
+                    }
+                    catch (Exception e)
+                    {
+                        channel.Logger.LogError($"{messageStructure.Queue.Name} Queue 执行失败,原因:{{0}},消息体{{1}}", e, body);
+                        currentChannel.BasicNack(ea.DeliveryTag, false, false);
+                    }
                 }
                 catch (Exception)
                 {
+                    channel.Logger.LogError($"Json解析{typeof(T).Name}失败:{{0}}", body);
                     currentChannel.BasicNack(ea.DeliveryTag, false, false);
                 }
             };
