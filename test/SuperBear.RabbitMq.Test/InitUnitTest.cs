@@ -12,7 +12,7 @@ namespace SuperBear.RabbitMq.Test
         public void Test_Init_RabbitMq()
         {
             var factory = (Factory)ServiceProvider.GetService(typeof(Factory));
-            factory.CurrentConnection.CreateChannel();
+            factory.CreateChannel();
         }
 
         [Fact]
@@ -29,7 +29,7 @@ namespace SuperBear.RabbitMq.Test
                 config.InitMessageStructure(messageStructure);
             });
             var factory = (Factory)ServiceProvider.GetService(typeof(Factory));
-            factory.CurrentConnection.CreateChannel();
+            factory.CreateChannel();
         }
     }
 }

@@ -24,14 +24,13 @@ namespace Console.Test
             var serviceProvider = InitDependencyInjection();
             InitRabbitMq();
             var factory = (Factory)serviceProvider.GetService(typeof(Factory));
-            var channel = factory.CurrentConnection.CreateChannel();
+            var channel = factory.CreateChannel();
 
             var basicProperties = channel.CreateBasicProperties(new SuperBear.RabbitMq.Build.BasicProperties() { Persistent = true });
             channel.Publish(basicProperties, "asd", new PublicationAddress(ExchangeType.Direct, "Exchange", "RoutingKey"));
-
             channel.Receive<List<string>>((message, ea) =>
             {
-                channel.CurrentChannel.BasicAck(ea.DeliveryTag, false);
+                throw new Exception("");
             }, "Queue");
         }
 
@@ -63,6 +62,7 @@ namespace Console.Test
         public static IServiceProvider InitDependencyInjection()
         {
             IServiceCollection services = new ServiceCollection();
+            services.AddLogging(loggingBuilder => { loggingBuilder.AddConsole(); });
             services.AddRabbitMq(option =>
             {
                 option.UserName = Configuration["Omega:RabbitOption:UserName"];

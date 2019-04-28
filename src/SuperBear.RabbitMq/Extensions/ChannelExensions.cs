@@ -110,6 +110,7 @@ namespace SuperBear.RabbitMq.Extensions
                 var body = Encoding.UTF8.GetString(ea.Body);
                 try
                 {
+                    channel.Logger.LogInformation($"{messageStructure.Queue.Name} Queue 消息体{{0}}", body);
                     var message = JsonConvert.DeserializeObject<T>(body);
                     try
                     {
@@ -138,6 +139,7 @@ namespace SuperBear.RabbitMq.Extensions
                 var body = Encoding.UTF8.GetString(ea.Body);
                 try
                 {
+                    channel.Logger.LogInformation($"{messageStructure.Queue.Name} Queue 消息体{{0}}", body);
                     var message = JsonConvert.DeserializeObject<T>(body);
                     try
                     {
@@ -190,6 +192,7 @@ namespace SuperBear.RabbitMq.Extensions
                 var body = Encoding.UTF8.GetString(ea.Body);
                 try
                 {
+                    channel.Logger.LogInformation($"{messageStructure.Queue.Name} Queue 消息体{{0}}", body);
                     var message = JsonConvert.DeserializeObject<T>(body);
                     try
                     {

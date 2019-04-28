@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace SuperBear.RabbitMq.Test
 {
@@ -11,6 +12,7 @@ namespace SuperBear.RabbitMq.Test
         public static IServiceProvider InitDependencyInjection()
         {
             IServiceCollection services = new ServiceCollection();
+            services.AddLogging(loggingBuilder => { loggingBuilder.AddConsole(); });
             services.AddRabbitMq(option =>
             {
                 option.UserName = "guest";

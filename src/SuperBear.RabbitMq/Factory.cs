@@ -1,12 +1,15 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using SuperBear.RabbitMq.Build;
+using SuperBear.RabbitMq.Init;
 
 namespace SuperBear.RabbitMq
 {
     public class Factory
     {
         private readonly RabbitOption _rabbitOption;
+        private readonly RabbitMqLogginFactory _rabbitMqLogginFactory;
         private ConnectionFactory _instance;
         public ConnectionFactory Instance
         {
@@ -43,9 +46,20 @@ namespace SuperBear.RabbitMq
                 return _currentConnection;
             }
         }
-        public Factory(IOptions<RabbitOption> rabbitOption)
+        public Factory(IOptions<RabbitOption> rabbitOption, RabbitMqLogginFactory rabbitMqLogginFactory)
         {
             _rabbitOption = rabbitOption.Value;
+            _rabbitMqLogginFactory = rabbitMqLogginFactory;
+        }
+        public Channel CreateChannel()
+        {
+            var channel = new Channel()
+            {
+                CurrentChannel = CurrentConnection.CreateModel(),
+                Logger = _rabbitMqLogginFactory.CreateLogger()
+            };
+            Initialize.Init(channel);
+            return channel;
         }
     }
 }

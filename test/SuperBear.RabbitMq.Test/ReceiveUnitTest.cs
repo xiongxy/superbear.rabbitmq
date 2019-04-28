@@ -13,7 +13,7 @@ namespace SuperBear.RabbitMq.Test
         public void Test_Receive()
         {
             var factory = (Factory)ServiceProvider.GetService(typeof(Factory));
-            var channel = factory.CurrentConnection.CreateChannel();
+            var channel = factory.CreateChannel();
             new MessageStructure()
             {
                 Exchange = new Exchange()
